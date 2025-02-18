@@ -19,7 +19,6 @@ function App() {
       const url = URL.createObjectURL(file);
       setFileUrl(url);
     }
-
   }
 
   return (
