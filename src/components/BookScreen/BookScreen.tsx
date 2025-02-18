@@ -18,12 +18,18 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
 
                 const arrayBuffer = await fetchAndConvertToArrayBuffer(fileUrl);
                 const zip = await JSZip.loadAsync(arrayBuffer);
+                const opfFile = zip.file('content.opf');
+
+                if (!opfFile) throw new Error('content.opf not found in EPUB');
+
+                const opfContent = await opfFile?.async('text');
+                console.log(opfContent);
+                const parser = new DOMParser();
+                const opfXml = parser.parseFromString(opfContent, 'application/xml');
+
+                console.log(opfXml);
 
 
-                // const blob = await fetch(fileUrl).then(res => res.blob());
-                // const arrayBuffer = await blob.arrayBuffer();
-                // const zip = await JSZip.loadAsync(arrayBuffer);
-                console.log(zip);
             }
             catch (e: any) {
                 console.error(e.message);
