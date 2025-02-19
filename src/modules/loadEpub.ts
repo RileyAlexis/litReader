@@ -4,12 +4,23 @@ import { fetchAndConvertToArrayBuffer } from "./fetchAndConvertToArrayBuffer";
 export interface EpubData {
     toc: { title: string; href: string }[];
     chapters: Chapter[];
+    css: string;
 }
 
 export interface Chapter {
     title: string;
     href: string;
     content: string;
+}
+
+// Function to fix CSS links inside extracted HTML
+const fixCSSLinks = (html: string, chapterPath: string, zip: JSZip) => {
+    const chapterDir = chapterPath.substring(0, chapterPath.lastIndexOf("/") + 1);
+
+    return html.replace(/href="([^"]+\.css)"/g, (match, cssFile) => {
+        const fixedPath = chapterDir + cssFile;
+        return zip.file(fixedPath) ? `href="${fixedPath}"` : match;
+    });
 }
 
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
@@ -74,11 +85,23 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         }
         console.log('Extracted TOC:', tocItems);
 
+        //Extract CSS Styles
+        let combinedCSS = "";
+        const cssFiles = Object.keys(zip.files).filter(file => file.endsWith(".css"));
+        for (const cssFile of cssFiles) {
+            const cssContent = await zip.file(cssFile)?.async("text");
+            if (cssContent) {
+                combinedCSS += cssContent + "\n";
+            }
+        }
+
+
         //Extract chapter content
         const chapters: Chapter[] = [];
         for (const tocItem of tocItems) {
-            const chapterFile = await zip.file(tocItem.href)?.async("text");
+            let chapterFile = await zip.file(tocItem.href)?.async("text");
             if (chapterFile) {
+                chapterFile = fixCSSLinks(chapterFile, tocItem.href, zip);
                 chapters.push({
                     title: tocItem.title,
                     href: tocItem.href,
@@ -89,10 +112,10 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             }
         }
 
-        return { toc: tocItems, chapters };
+        return { toc: tocItems, chapters, css: combinedCSS };
     }
     catch (e: any) {
         console.error(e.message);
-        return { toc: [], chapters: [] }
+        return { toc: [], chapters: [], css: "" }
     }
 }
