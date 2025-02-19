@@ -1,10 +1,9 @@
-@layer base {
   :root {
     --blue: #2c8daa;
     --pink: #cb3487;
     --whiteText: rgba(150, 150, 150, 1);
     --blackText: black;
-    --darkBackground: rgba(0, 0, 0, 0.85);
+    --darkBackground: rgba(0, 0, 0, 0.99);
     --linkColor: white;
     --visitedLink: #ff8ddb;
 
@@ -32,6 +31,7 @@
   }
 
   html {
+    height: 100%;
     box-sizing: border-box;
   }
 
@@ -42,13 +42,14 @@
   }
 
   body {
+    height: 100%;
     font-family: var(--sans);
     line-height: 1.5;
     font-size: var(--base-size);
     padding: 0;
     margin: 0;
-    color: var(--blackText);
-    background-color: var(--darkBackground);
+    color: whitesmoke;
+    background-color: black;
 
   }
 
@@ -65,7 +66,6 @@
   .appContainer {
     width: 100vw;
     height: 100vh;
-    background-color: black;
-    color: whitesmoke;
+    height: -webkit-fill-available;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-}
