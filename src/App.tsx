@@ -2,6 +2,7 @@ import { ChangeEvent, useState } from "react";
 import { LitHeader } from "./components/LitHeader";
 import { BookScreen } from "./components/BookScreen/BookScreen";
 
+import './App.css';
 
 function App() {
   const [rangeThing, setRangeThing] = useState(0);
@@ -22,7 +23,7 @@ function App() {
   }
 
   return (
-    <div>
+    <div className="appContainer">
       <LitHeader />
       <h2>React on Safari 12</h2>
       <button>Im a Button!</button>

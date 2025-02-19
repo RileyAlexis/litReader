@@ -8,6 +8,9 @@ interface BookScreenProps {
 
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [htmlContent, setHtmlContent] = useState<string>('');
+    const [toc, setToc] = useState<any>();
+    const [bookData, setBookData] = useState<any>();
+
     const [error, setError] = useState<string>('');
 
     useEffect(() => {
@@ -18,18 +21,64 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
 
                 const arrayBuffer = await fetchAndConvertToArrayBuffer(fileUrl);
                 const zip = await JSZip.loadAsync(arrayBuffer);
-                const opfFile = zip.file('content.opf');
 
-                if (!opfFile) throw new Error('content.opf not found in EPUB');
+                console.log("Epub file list", Object.keys(zip.files));
 
-                const opfContent = await opfFile?.async('text');
-                console.log(opfContent);
-                const parser = new DOMParser();
-                const opfXml = parser.parseFromString(opfContent, 'application/xml');
+                const containerFile = await zip.file('META-INF/container.xml')?.async('text');
+                if (!containerFile) throw new Error('container.xml not found');
 
-                console.log(opfXml);
+                const containerXml = new DOMParser().parseFromString(containerFile, "application/xml");
+                const opfPath = containerXml.querySelector("rootfile")?.getAttribute("full-path");
+                if (!opfPath) throw new Error("OPF file path not found");
 
+                const opfFile = await zip.file(opfPath)?.async("text");
+                if (!opfFile) throw new Error("OPF File not found");
 
+                const opfXml = new DOMParser().parseFromString(opfFile, "application/xml");
+
+                const ncxItem = opfXml.querySelector('manifest item[media-type="application/x-dtbncx+xml"]');
+                let tocItems: any[] = [];
+
+                if (ncxItem) {
+                    console.log('Using toc.ncx for TOC extraction');
+                    const ncxPath = ncxItem.getAttribute('href');
+                    if (!ncxPath) throw new Error("toc.nxc href not found");
+
+                    const ncxFile = await zip.file(ncxPath)?.async("text");
+                    if (!ncxFile) throw new Error("toc.ncx file not found in epub");
+
+                    const ncxXml = new DOMParser().parseFromString(ncxFile, "application/xml");
+                    const navPoints = ncxXml.querySelectorAll("navMap navPoint");
+
+                    navPoints.forEach(navPoint => {
+                        const title = navPoint.querySelector("navLabel text")?.textContent || "Untitled";
+                        let href = navPoint.querySelector("content")?.getAttribute("src") || "";
+
+                        if (!href.startsWith("http") && opfPath.includes("/")) {
+                            const opfDir = opfPath.substring(0, opfPath.lastIndexOf("/") + 1);
+                            href = opfDir + href;
+                        }
+                        tocItems.push({ title, href });
+                    });
+                } else {
+                    console.log("toc.ncx not found using spine for TOC");
+                    const spine = opfXml.querySelector("spine");
+                    const itemRefs = spine?.querySelectorAll("itemref");
+
+                    itemRefs?.forEach(itemRef => {
+                        const idref = itemRef.getAttribute("idref");
+                        if (idref) {
+                            const item = opfXml.querySelector(`manifest item[id="${idref}"]`);
+                            const href = item?.getAttribute("href");
+                            if (href) {
+                                tocItems.push({ title: href, href });
+                            }
+                        }
+                    });
+                }
+
+                setToc(tocItems);
+                console.log('Extracted TOC:', tocItems);
             }
             catch (e: any) {
                 console.error(e.message);
