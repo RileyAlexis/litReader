@@ -310,13 +310,13 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
             chapterContent = chapterFile;
         }
 
-        const contentDoc = new DOMParser().parseFromString(chapterContent, "application/xhtml+xml");
+        // const contentDoc = new DOMParser().parseFromString(chapterContent, "application/xhtml+xml");
 
-        const titleElement = contentDoc.querySelector("title") || contentDoc.querySelector("h1, h2, a");
-        const chapterTitle = titleElement?.textContent?.trim() || title;
+        // const titleElement = contentDoc.querySelector("title") || contentDoc.querySelector("h1, h2, a");
+        // const chapterTitle = titleElement?.textContent?.trim() || title;
 
         chapters.push({
-            title: chapterTitle,
+            title: title,
             href,
             content: chapterContent
         });
