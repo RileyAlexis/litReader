@@ -90,27 +90,31 @@ const extractChapterContent = (doc: Document, tocItem: { title: string; href: st
     };
 };
 
+//Function to verify the existence of the epub container file and return the path to the OPF file
+const verifyEpub = async (zip: JSZip): Promise<string | null> => {
+    let opfPath: string | null = null;
+
+    //Find path to the epub container file and read the path to the opf file
+    const containerFile = await zip.file('META-INF/container.xml')?.async('text');
+
+    if (containerFile) {
+        const containerXml = new DOMParser().parseFromString(containerFile, "application/xml");
+        opfPath = containerXml.querySelector("rootfile")?.getAttribute("full-path") || null;
+        return opfPath;
+
+        //If no container file this is not a valid epub file
+    } else {
+        console.error("Container.xml not found. Not a valid Epub file");
+        return null;
+    }
+}
+
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
     try {
         const arrayBuffer = await fetchAndConvertToArrayBuffer(fileUrl);
         const zip = await JSZip.loadAsync(arrayBuffer);
-
+        const opfPath = await verifyEpub(zip);
         console.log("Epub file list", Object.keys(zip.files));
-
-        // Try finding container.xml
-        let opfPath: string | null = null;
-        const containerFile = await zip.file('META-INF/container.xml')?.async('text');
-
-        if (containerFile) {
-            const containerXml = new DOMParser().parseFromString(containerFile, "application/xml");
-            opfPath = containerXml.querySelector("rootfile")?.getAttribute("full-path") || null;
-        }
-
-        // Fallback: Search for an OPF file manually if container.xml is missing
-        if (!opfPath) {
-            console.warn("container.xml not found, searching for an OPF file manually.");
-            opfPath = Object.keys(zip.files).find(file => file.endsWith(".opf")) || null;
-        }
 
         let tocItems: { title: string; href: string }[] = [];
         const chapters: Chapter[] = [];
@@ -123,6 +127,10 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             if (!opfFile) throw new Error("OPF File not found");
 
             const opfXml = new DOMParser().parseFromString(opfFile, "application/xml");
+
+            const packageElement = opfXml.querySelector('package');
+            const version = packageElement ? packageElement.getAttribute("version") : "Unknown";
+            console.log(version);
 
             // Extract TOC (EPUB 2)
             const ncxItem = opfXml.querySelector('manifest item[media-type="application/x-dtbncx+xml"]');

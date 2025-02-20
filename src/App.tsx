@@ -30,7 +30,7 @@ function App() {
       <input type="text" placeholder="Text Input"></input>
       <input type="range" step={10} max={200} min={0} value={rangeThing} onChange={(e) => handleRangeThing(e)}></input>
       <span>{rangeThing}</span>
-      <input type="file" onChange={handleFileSelect}></input>
+      <input type="file" accept=".epub" onChange={handleFileSelect}></input>
       <BookScreen fileUrl={fileUrl} />
 
     </div>
