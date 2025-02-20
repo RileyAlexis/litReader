@@ -49,7 +49,6 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         <div style={{ width: "100%", height: "100%", overflowY: "auto" }}>
             {bookData?.chapters.map((chapter, index) => (
                 <div key={index}>
-                    {/* <h2>{chapter.title}</h2> */}
                     <div dangerouslySetInnerHTML={{ __html: chapter.content }} />
                 </div>
             ))}

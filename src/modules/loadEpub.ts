@@ -2,9 +2,14 @@ import JSZip from "jszip";
 import { fetchAndConvertToArrayBuffer } from "./fetchAndConvertToArrayBuffer";
 
 export interface EpubData {
-    toc: { title: string; href: string }[];
+    toc: TOC[];
     chapters: Chapter[];
     css: string;
+}
+
+export interface TOC {
+    title: string;
+    href: string;
 }
 
 export interface Chapter {
@@ -91,7 +96,7 @@ const extractChapterContent = (doc: Document, tocItem: { title: string; href: st
 };
 
 //Function to verify the existence of the epub container file and return the path to the OPF file
-const verifyEpub = async (zip: JSZip): Promise<string | null> => {
+const verifyEpubGetOpfPath = async (zip: JSZip): Promise<string> => {
     let opfPath: string | null = null;
 
     //Find path to the epub container file and read the path to the opf file
@@ -100,90 +105,188 @@ const verifyEpub = async (zip: JSZip): Promise<string | null> => {
     if (containerFile) {
         const containerXml = new DOMParser().parseFromString(containerFile, "application/xml");
         opfPath = containerXml.querySelector("rootfile")?.getAttribute("full-path") || null;
-        return opfPath;
+        if (opfPath) {
+            return opfPath;
+        } else {
+            throw new Error("OPF Path not found");
+        }
 
         //If no container file this is not a valid epub file
     } else {
-        console.error("Container.xml not found. Not a valid Epub file");
-        return null;
+        throw new Error("Container.xml not found. Not a valid Epub file");
+
     }
 }
+
+const getOpfFile = async (zip: JSZip, opfPath: string): Promise<string> => {
+    const opfFile = await zip.file(opfPath)?.async("text");
+
+    if (opfFile) {
+        return opfFile;
+    } else {
+        throw new Error("OPF File not found")
+    }
+}
+
+//Reads the contents of the content.opf file and returns the parsed xml
+const parseOpfXml = async (zip: JSZip, opfFile: string): Promise<Document> => {
+    const opfXml = new DOMParser().parseFromString(opfFile, "application/xml");
+    return opfXml;
+}
+
+//Returns the version of the EPUB file as stated in the content.opf
+const getEpubVersion = async (zip: JSZip, opfXml: Document): Promise<string | null> => {
+    const packageElement = opfXml.querySelector('package');
+    const version = packageElement ? packageElement.getAttribute("version") : "Unknown";
+    return version;
+}
+
+//For Epub 2 = parses the toc.ncx file or the spine data to get table of contents
+const parseNcxXml = async (zip: JSZip, opfXml: Document, opfPath: string): Promise<Document> => {
+    console.log("OPF XML in parseNcxXml:", opfXml);
+
+    // Attempt to find the NCX file in the OPF manifest
+    let ncxItem: Element | null = opfXml.querySelector('manifest item[media-type="application/x-dtbncx+xml"]');
+
+    // If not found in the manifest, expand search to other possible NCX references in the manifest
+    if (!ncxItem) {
+        console.warn("NCX file not found in OPF manifest. Expanding search...");
+        const allItems = Array.from(opfXml.querySelectorAll("manifest item"));
+
+        // Look for a file ending in .ncx
+        ncxItem = allItems.find((item) => {
+            const href = item.getAttribute("href")?.toLowerCase();
+            return href?.endsWith(".ncx");
+        }) || null;
+
+        if (!ncxItem) {
+            console.warn("NCX file still not found in OPF manifest. Checking spine...");
+            // Look in the spine for the NCX reference (fallback for some EPUBs)
+            const spineItems = Array.from(opfXml.querySelectorAll("spine itemref"));
+            for (const spineItem of spineItems) {
+                const itemId = spineItem.getAttribute("idref");
+                if (itemId) {
+                    const itemInManifest = opfXml.querySelector(`manifest item[id="${itemId}"]`);
+                    if (itemInManifest) {
+                        const href = itemInManifest.getAttribute("href");
+                        if (href?.toLowerCase().endsWith(".ncx")) {
+                            ncxItem = itemInManifest;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!ncxItem) {
+            throw new Error("No NCX file found in OPF manifest or spine.");
+        }
+    }
+
+    // Extract NCX file path and handle relative paths
+    let ncxHref = ncxItem.getAttribute("href");
+    if (!ncxHref) throw new Error("NCX file href attribute missing.");
+
+    console.log("Found NCX file reference:", ncxHref);
+
+    // Resolve relative NCX path based on OPF location
+    const opfDir = opfPath.substring(0, opfPath.lastIndexOf("/") + 1);
+    const ncxFullPath = opfDir + ncxHref;
+    console.log("Resolved NCX file path:", ncxFullPath);
+
+    //Read and parse the NCX XML file
+    const ncxFile = await zip.file(ncxFullPath)?.async("text");
+    if (!ncxFile) throw new Error(`NCX file not found at ${ncxFullPath}`);
+
+    const ncxXml = new DOMParser().parseFromString(ncxFile, "application/xml");
+    return ncxXml;
+};
+
+//For Epub 3 - parses the nav data for table of contents
+const parseNavXml = async (zip: JSZip, opfXml: Document): Promise<Document> => {
+    const navItem = Array.from(opfXml.getElementsByTagName("item")).find(item => item.getAttribute("properties")?.includes("nav"));
+    if (!navItem) throw new Error("Navigation document (TOC) not found in OPF File");
+
+    const navHref = navItem.getAttribute("href");
+    if (!navHref) throw new Error("TOC file href not found");
+
+    console.log("Nav Href", navHref);
+
+    const navFile = await zip.file(navHref)?.async("text");
+    if (!navFile) throw new Error("TOC XHTML file not found in EPUB");
+
+    return new DOMParser().parseFromString(navFile, "application/xhtml+xml");
+}
+
+const getEpub2TableOfContents = async (ncxXml: Document): Promise<TOC[]> => {
+    const tocItems: TOC[] = [];
+
+    const navMap = ncxXml.querySelector("navMap");
+    if (!navMap) throw new Error("navMap not found in NCX file");
+
+    const navPoints = Array.from(navMap.getElementsByTagName("navPoint"));
+
+    for (const navPoint of navPoints) {
+        const titleElement = navPoint.querySelector("navLabel > text");
+        const contentElement = navPoint.querySelector("content");
+
+        const title = titleElement?.textContent?.trim() || "Untitled";
+        const href = contentElement?.getAttribute("src") || "";
+
+        if (href) tocItems.push({ title, href });
+    }
+
+    return tocItems;
+}
+
+const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
+    const tocItems: TOC[] = [];
+
+    // Step 1: Locate the <nav> element with epub:type="toc"
+    const navElement = navXml.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"]');
+    if (!navElement) throw new Error("TOC <nav> element not found in EPUB 3 Navigation Document");
+
+    // Step 2: Extract TOC items from <li> elements
+    const tocLinks = Array.from(navElement.querySelectorAll("li > a"));
+
+    for (const link of tocLinks) {
+        const title = link.textContent?.trim() || "Untitled";
+        const href = link.getAttribute("href") || "";
+
+        if (href) tocItems.push({ title, href });
+    }
+
+    return tocItems;
+};
+
 
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
     try {
         const arrayBuffer = await fetchAndConvertToArrayBuffer(fileUrl);
         const zip = await JSZip.loadAsync(arrayBuffer);
-        const opfPath = await verifyEpub(zip);
-        console.log("Epub file list", Object.keys(zip.files));
+        const opfPath = await verifyEpubGetOpfPath(zip);
+        const opfFile = await getOpfFile(zip, opfPath);
+        const opfXml = await parseOpfXml(zip, opfFile);
+        // const version = await getEpubVersion(zip, opfXml);
 
-        let tocItems: { title: string; href: string }[] = [];
+        let tocItems;
+
+        try {
+            const navXml = await parseNavXml(zip, opfXml);
+            tocItems = await getEpub3TableOfContents(navXml);
+        } catch (epub3Error) {
+            console.warn('EPUB 3 TOC extraction failed, trying Epub 2');
+            const ncxXml = await parseNcxXml(zip, opfXml, opfPath);
+            tocItems = await getEpub2TableOfContents(ncxXml);
+        }
+
         const chapters: Chapter[] = [];
         let combinedCSS = "";
 
-        if (opfPath) {
-            console.log("Using OPF file:", opfPath);
-            const opfFile = await zip.file(opfPath)?.async("text");
 
-            if (!opfFile) throw new Error("OPF File not found");
 
-            const opfXml = new DOMParser().parseFromString(opfFile, "application/xml");
 
-            const packageElement = opfXml.querySelector('package');
-            const version = packageElement ? packageElement.getAttribute("version") : "Unknown";
-            console.log(version);
 
-            // Extract TOC (EPUB 2)
-            const ncxItem = opfXml.querySelector('manifest item[media-type="application/x-dtbncx+xml"]');
-
-            if (ncxItem) {
-                console.log('Using toc.ncx for TOC extraction');
-                let ncxPath = ncxItem.getAttribute('href');
-                if (!ncxPath) throw new Error("toc.ncx href not found");
-
-                if (!ncxPath.startsWith("http") && opfPath.includes("/")) {
-                    const opfDir = opfPath.substring(0, opfPath.lastIndexOf("/") + 1);
-                    ncxPath = opfDir + ncxPath;
-                }
-
-                const ncxFile = await zip.file(ncxPath)?.async("text");
-                if (!ncxFile) throw new Error("toc.ncx file not found in epub");
-
-                const ncxXml = new DOMParser().parseFromString(ncxFile, "application/xml");
-                const navPoints = ncxXml.querySelectorAll("navMap navPoint");
-
-                navPoints.forEach(navPoint => {
-                    const title = navPoint.querySelector("navLabel text")?.textContent || "Untitled";
-                    let href = navPoint.querySelector("content")?.getAttribute("src") || "";
-
-                    if (!href.startsWith("http") && opfPath.includes("/")) {
-                        const opfDir = opfPath.substring(0, opfPath.lastIndexOf("/") + 1);
-                        href = opfDir + href;
-                    }
-                    tocItems.push({ title, href });
-                });
-            } else {
-                console.log("toc.ncx not found using spine for TOC");
-                const spine = opfXml.querySelector("spine");
-                const itemRefs = spine?.querySelectorAll("itemref");
-
-                itemRefs?.forEach(itemRef => {
-                    const idref = itemRef.getAttribute("idref");
-                    if (idref) {
-                        const item = opfXml.querySelector(`manifest item[id="${idref}"]`);
-                        const href = item?.getAttribute("href");
-                        if (href) {
-                            tocItems.push({ title: href, href });
-                        }
-                    }
-                });
-            }
-        } else {
-            console.warn("No OPF file found, scanning for potential HTML chapters...");
-            // EPUB 1.0 compatibility: Scan for HTML/XHTML files as fallback
-            tocItems = Object.keys(zip.files)
-                .filter(file => file.endsWith(".html") || file.endsWith(".xhtml"))
-                .map(file => ({ title: file, href: file }));
-        }
 
         console.log("Extracted TOC:", tocItems);
 
