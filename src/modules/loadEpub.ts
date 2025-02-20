@@ -243,17 +243,28 @@ const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
     const tocItems: TOC[] = [];
 
     // Step 1: Locate the <nav> element with epub:type="toc"
-    const navElement = navXml.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"]');
-    if (!navElement) throw new Error("TOC <nav> element not found in EPUB 3 Navigation Document");
+    const navElement = navXml.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"], nav');
 
-    // Step 2: Extract TOC items from <li> elements
-    const tocLinks = Array.from(navElement.querySelectorAll("li > a"));
+    console.log(navXml.querySelectorAll("li"));
+    console.log('NavElement*************************', navElement);
 
-    for (const link of tocLinks) {
+    if (!navElement) {
+        throw new Error("TOC <nav> element not found in EPUB 3 Navigation Document");
+    }
+
+    const links = Array.from(navElement.querySelectorAll("a"));
+
+    for (const link of links) {
+        const href = link.getAttribute("href");
         const title = link.textContent?.trim() || "Untitled";
-        const href = link.getAttribute("href") || "";
 
-        if (href) tocItems.push({ title, href });
+        // Ensure that href exists before pushing the item
+        if (href) {
+            tocItems.push({
+                title,
+                href: href.startsWith("#") ? href : `${href}`, // Handle relative URLs if needed
+            });
+        }
     }
 
     return tocItems;
@@ -262,6 +273,7 @@ const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
 // Extract chapter content
 const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: string): Promise<Chapter[]> => {
     const chapters: Chapter[] = [];
+    let lastFileHref: string | null = null;
 
     for (const tocItem of tocItems) {
         const href = tocItem.href;
@@ -270,50 +282,52 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
         if (!href) continue;
 
         const fullHref = opfPath.endsWith("/") ? opfPath + href : opfPath + "" + href;
+        let fileHref = href;
+        let anchorId: string | null = null;
+        //TODO: Remove consoles
         console.log('Full HREF', fullHref);
+
         let chapterContent = "";
 
         //Looks for an anchor index in the href and separates it from the file path
         const anchorIndex = href.indexOf('#');
         if (anchorIndex !== -1) {
-            const fileHref = fullHref.substring(0, anchorIndex);
-            const anchorId = fullHref.substring(anchorIndex + 1);
+            fileHref = fullHref.substring(0, anchorIndex);
+            anchorId = fullHref.substring(anchorIndex + 1);
 
+            //TODO: Remove consoles
             console.log(`fileHref`, fileHref);
             console.log('anchorID', anchorId);
-
-            const contentFile = await zip.file(fileHref)?.async("text");
-            if (!contentFile) {
-                console.warn(`Unable to find content file at ${fileHref}`);
-                continue;
-            }
-
-            const contentDoc = new DOMParser().parseFromString(contentFile, "application/xhtml+xml");
-            let section = contentDoc.querySelector(`#${anchorId}`);
-
-            if (!section) {
-                section = contentDoc.getElementById(anchorId);
-            }
-
-            if (section) {
-                chapterContent = section.outerHTML;
-            } else {
-                console.warn(`Section with id ${anchorId} not found in ${fileHref}`);
-                continue;
-            }
-        } else {
-            const chapterFile = await zip.file(fullHref)?.async("text");
-            if (!chapterFile) {
-                console.warn(`Unable to find chapter file at ${fullHref}`);
-                continue;
-            }
-            chapterContent = chapterFile;
         }
 
-        // const contentDoc = new DOMParser().parseFromString(chapterContent, "application/xhtml+xml");
+        const contentFile = await zip.file(fileHref)?.async("text");
+        if (!contentFile) {
+            console.warn(`Unable to find content file at ${fileHref}`);
+            continue;
+        }
 
-        // const titleElement = contentDoc.querySelector("title") || contentDoc.querySelector("h1, h2, a");
-        // const chapterTitle = titleElement?.textContent?.trim() || title;
+        const contentDoc = new DOMParser().parseFromString(contentFile, "application/xhtml+xml");
+
+        if (!anchorId || lastFileHref !== fileHref) {
+            chapterContent = contentFile;
+        } else {
+            let section = contentDoc.querySelector(`#${anchorId}`) || contentDoc.getElementById(anchorId);
+            if (section) {
+                let contentParts: string[] = [];
+                let nextElement: Element | null = section.nextElementSibling;
+
+                while (nextElement && !nextElement.id) {
+                    contentParts.push(nextElement.outerHTML);
+                    nextElement = nextElement.nextElementSibling;
+                }
+                chapterContent = section.outerHTML + contentParts.join("");
+            } else {
+                console.warn(`Section with id ${anchorId} not found in ${fileHref}`);
+                chapterContent = contentFile;
+            }
+        }
+
+        lastFileHref = fileHref;
 
         chapters.push({
             title: title,
@@ -321,8 +335,9 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
             content: chapterContent
         });
     }
+
     return chapters;
-}
+};
 
 
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
@@ -339,6 +354,7 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
 
         try {
             const navXml = await parseNavXml(zip, opfXml);
+            console.log('NavXml**************', navXml);
             tocItems = await getEpub3TableOfContents(navXml);
         } catch (epub3Error) {
             console.warn('EPUB 3 TOC extraction failed, trying Epub 2');
