@@ -366,14 +366,14 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         let combinedCSS = "";
 
 
-        // Extract CSS files
-        const cssFiles = Object.keys(zip.files).filter(file => file.endsWith(".css"));
-        for (const cssFile of cssFiles) {
-            const cssContent = await zip.file(cssFile)?.async("text");
-            if (cssContent) {
-                combinedCSS += cssContent + "\n";
-            }
-        }
+        // // Extract CSS files
+        // const cssFiles = Object.keys(zip.files).filter(file => file.endsWith(".css"));
+        // for (const cssFile of cssFiles) {
+        //     const cssContent = await zip.file(cssFile)?.async("text");
+        //     if (cssContent) {
+        //         combinedCSS += cssContent + "\n";
+        //     }
+        // }
 
 
 

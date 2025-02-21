@@ -33,14 +33,31 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     //Allows a user selected font size to override the epub CSS
     useEffect(() => {
         if (bookData?.css) {
-            const updatedCss = `
-           :root {
-           font-size: ${fontSize}px;
-           }
-           ${bookData.css}
-            `;
             const styleTag = document.createElement("style");
+            styleTag.id = "custom-reader-style"; // Unique ID to prevent duplicates
+
+            const updatedCss = `
+            :root {
+                font-size: ${fontSize}px !important;
+                color: whitesmoke !important;
+            }
+            body, p, span, div, h1, h2, h3, h4, h5, h6, a, li, td, th {
+                color: whitesmoke !important;
+            }
+            * {
+                color: inherit !important; /* Removes any color settings */
+            }
+            ${bookData.css.replace(/color\s*:\s*[^;]+;/gi, "")} /* Strip 'color' properties from EPUB CSS */
+        `;
+
             styleTag.textContent = updatedCss;
+
+            // Remove any existing style tag with the same ID
+            const existingStyleTag = document.getElementById("custom-reader-style");
+            if (existingStyleTag) {
+                existingStyleTag.remove();
+            }
+
             document.head.appendChild(styleTag);
         }
     }, [bookData, fontSize]);
