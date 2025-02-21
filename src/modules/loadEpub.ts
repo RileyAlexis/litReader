@@ -29,7 +29,6 @@ const fixCSSLinks = (html: string, chapterPath: string, zip: JSZip) => {
 
 const extractChapterContentBackup = (doc: Document, tocItem: { title: string; href: string }) => {
     const fragment = tocItem.href.split("#")[1]; // Extract fragment ID
-    console.log(fragment);
     // Case 1: If no fragment (no # in href), look for the whole document content
     if (!fragment) {
         return {
@@ -143,7 +142,6 @@ const getEpubVersion = async (zip: JSZip, opfXml: Document): Promise<string | nu
 
 //For Epub 2 = parses the toc.ncx file or the spine data to get table of contents
 const parseNcxXml = async (zip: JSZip, opfXml: Document, opfPath: string): Promise<Document> => {
-    console.log("OPF XML in parseNcxXml:", opfXml);
 
     // Attempt to find the NCX file in the OPF manifest
     let ncxItem: Element | null = opfXml.querySelector('manifest item[media-type="application/x-dtbncx+xml"]');
@@ -187,12 +185,10 @@ const parseNcxXml = async (zip: JSZip, opfXml: Document, opfPath: string): Promi
     let ncxHref = ncxItem.getAttribute("href");
     if (!ncxHref) throw new Error("NCX file href attribute missing.");
 
-    console.log("Found NCX file reference:", ncxHref);
 
     // Resolve relative NCX path based on OPF location
     const opfDir = opfPath.substring(0, opfPath.lastIndexOf("/") + 1);
     const ncxFullPath = opfDir + ncxHref;
-    console.log("Resolved NCX file path:", ncxFullPath);
 
     //Read and parse the NCX XML file
     const ncxFile = await zip.file(ncxFullPath)?.async("text");
@@ -210,7 +206,6 @@ const parseNavXml = async (zip: JSZip, opfXml: Document): Promise<Document> => {
     const navHref = navItem.getAttribute("href");
     if (!navHref) throw new Error("TOC file href not found");
 
-    console.log("Nav Href", navHref);
 
     const navFile = await zip.file(navHref)?.async("text");
     if (!navFile) throw new Error("TOC XHTML file not found in EPUB");
@@ -244,9 +239,6 @@ const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
 
     // Step 1: Locate the <nav> element with epub:type="toc"
     const navElement = navXml.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"], nav');
-
-    console.log(navXml.querySelectorAll("li"));
-    console.log('NavElement*************************', navElement);
 
     if (!navElement) {
         throw new Error("TOC <nav> element not found in EPUB 3 Navigation Document");
@@ -284,8 +276,6 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
         const fullHref = opfPath.endsWith("/") ? opfPath + href : opfPath + "" + href;
         let fileHref = href;
         let anchorId: string | null = null;
-        //TODO: Remove consoles
-        console.log('Full HREF', fullHref);
 
         let chapterContent = "";
 
@@ -294,10 +284,6 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
         if (anchorIndex !== -1) {
             fileHref = fullHref.substring(0, anchorIndex);
             anchorId = fullHref.substring(anchorIndex + 1);
-
-            //TODO: Remove consoles
-            console.log(`fileHref`, fileHref);
-            console.log('anchorID', anchorId);
         }
 
         const contentFile = await zip.file(fileHref)?.async("text");
@@ -386,7 +372,6 @@ const updateImageSources = (htmlString: string, imageMap: Record<string, string>
             if (imageMap[normalizedSrc]) {
                 // Set the Blob URL from the image map if it exists
                 img.setAttribute("src", imageMap[normalizedSrc]);
-                console.log('Updated src:', imageMap[normalizedSrc]);
             } else {
                 console.warn(`Image not found in map: ${normalizedSrc}`);
             }
@@ -410,7 +395,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
 
         try {
             const navXml = await parseNavXml(zip, opfXml);
-            console.log('NavXml**************', navXml);
             tocItems = await getEpub3TableOfContents(navXml);
         } catch (epub3Error) {
             console.warn('EPUB 3 TOC extraction failed, trying Epub 2');
@@ -419,7 +403,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         }
 
         const imageMap = await extractImagesFromEpub(zip);
-        console.log('Image Map', imageMap);
         const chapters = await extractChapterContent(zip, tocItems, contentPath, imageMap);
 
         let combinedCSS = "";
