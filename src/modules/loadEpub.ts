@@ -374,17 +374,19 @@ const updateImageSources = (htmlString: string, imageMap: Record<string, string>
     images.forEach((img) => {
         const originalSrc = img.getAttribute("src");
         if (originalSrc) {
-            // Normalize the path (remove leading ./, ../, etc.)
+            // Normalize the path (removes leading ./, ../, etc.)
             let normalizedSrc = decodeURIComponent(originalSrc).replace(/^\.\//, "").replace(/^\.{2}\//, "");
 
-            // Ensure the image path is resolved correctly relative to the base path
-            if (!normalizedSrc.startsWith("http") && !normalizedSrc.startsWith("data:")) {
+            // If the basePath is empty, don't prepend anything
+            if (basePath && !normalizedSrc.startsWith("http") && !normalizedSrc.startsWith("data:")) {
                 normalizedSrc = basePath + normalizedSrc;
             }
 
-            // Check if the image exists in the map
+            // Check if the image exists in the map using the full resolved path
             if (imageMap[normalizedSrc]) {
-                img.setAttribute("src", imageMap[normalizedSrc]); // Set Blob URL
+                // Set the Blob URL from the image map if it exists
+                img.setAttribute("src", imageMap[normalizedSrc]);
+                console.log('Updated src:', imageMap[normalizedSrc]);
             } else {
                 console.warn(`Image not found in map: ${normalizedSrc}`);
             }
@@ -417,7 +419,7 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         }
 
         const imageMap = await extractImagesFromEpub(zip);
-        console.log(imageMap);
+        console.log('Image Map', imageMap);
         const chapters = await extractChapterContent(zip, tocItems, contentPath, imageMap);
 
         let combinedCSS = "";
