@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 import { MetaData } from "../Types/EpubDataTypes";
 
-export const extractEpubMetadata = async (zip: JSZip, opfPath: string): Promise<MetaData> => {
+export const extractEpubMetadata = async (zip: JSZip, opfXml: Document): Promise<MetaData> => {
     const metadata: MetaData = {
         title: "Unknown Title",
         author: "Unknown Author",
@@ -9,15 +9,7 @@ export const extractEpubMetadata = async (zip: JSZip, opfPath: string): Promise<
         isbn: "",
     };
 
-
-    const opfFile = await zip.file(opfPath)?.async("text");
-    if (!opfFile) {
-        console.warn("Unable to find content.opf");
-        return metadata;
-    }
-
-    const opfDoc = new DOMParser().parseFromString(opfFile, "application/xml");
-    const metadataNode = opfDoc.querySelector("metadata");
+    const metadataNode = opfXml.querySelector("metadata");
 
     if (metadataNode) {
         // Extract title
@@ -42,12 +34,18 @@ export const extractEpubMetadata = async (zip: JSZip, opfPath: string): Promise<
         const publisherNode = metadataNode.querySelector("publisher");
         if (publisherNode) metadata.publisher = publisherNode.textContent?.trim();
 
-        // Extract ISBN
-        const isbnNode = metadataNode.querySelector("identifier[opf\\:scheme='ISBN'], identifier");
-        if (isbnNode) {
-            const isbnValue = isbnNode.textContent?.trim();
-            if (isbnValue && /^\d{10,13}$/.test(isbnValue)) {
-                metadata.isbn = isbnValue; // Ensure it's a valid ISBN-10 or ISBN-13
+        // Extract ISBN using the correct XML namespace
+        const isbnNode = opfXml.getElementsByTagNameNS("http://purl.org/dc/elements/1.1/", "identifier");
+
+        // Look for the ISBN identifier with the 'opf:scheme' attribute
+        for (let i = 0; i < isbnNode.length; i++) {
+            const node = isbnNode[i];
+            if (node.getAttribute("opf:scheme") === "ISBN") {
+                const isbnValue = node.textContent?.trim();
+                if (isbnValue && /^\d{10,13}$/.test(isbnValue)) {
+                    metadata.isbn = isbnValue; // Ensure it's a valid ISBN-10 or ISBN-13
+                    break;
+                }
             }
         }
     } else {

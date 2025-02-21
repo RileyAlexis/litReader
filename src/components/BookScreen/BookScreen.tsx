@@ -19,7 +19,7 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
             const fetchedData = await loadEpub(fileUrl);
             setBookData(fetchedData);
 
-            console.log(fetchedData);
+            console.log('meta data', fetchedData.metaData);
         }
 
         loadBook();

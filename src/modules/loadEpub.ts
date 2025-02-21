@@ -46,6 +46,8 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         const opfXml = await parseOpfXml(zip, opfFile);
         // const version = await getEpubVersion(zip, opfXml);
 
+        console.debug(opfFile);
+
         let tocItems;
 
         try {
@@ -57,7 +59,7 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             tocItems = await getEpub2TableOfContents(ncxXml);
         }
 
-        const metaData = await extractEpubMetadata(zip, opfPath);
+        const metaData = await extractEpubMetadata(zip, opfXml);
         const imageMap = await extractImagesFromEpub(zip);
         const chapters = await extractChapterContent(zip, tocItems, contentPath, imageMap);
 
@@ -75,6 +77,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         return { toc: tocItems, chapters, css: combinedCSS, metaData: metaData };
     } catch (e: any) {
         console.error(e.message);
-        return { toc: [], chapters: [], css: "", metaData: { title: "", author: "", publisher: "", language: "" } };
+        return { toc: [], chapters: [], css: "", metaData: { title: "", author: "", publisher: "", language: "", isbn: "" } };
     }
 };
