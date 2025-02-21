@@ -13,6 +13,7 @@ import { getEpub2TableOfContents } from "./getEpub2TableOfContents";
 import { getEpub3TableOfContents } from "./getEpub3TableOfContents";
 import { extractChapterContent } from "./extractChapterContent";
 import { extractImagesFromEpub } from "./extractImagesFromEpub";
+import { extractEpubMetadata } from "./extractEpubMetaData";
 
 //Reads the contents of the content.opf file and returns the parsed xml
 const parseOpfXml = async (zip: JSZip, opfFile: string): Promise<Document> => {
@@ -56,6 +57,7 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             tocItems = await getEpub2TableOfContents(ncxXml);
         }
 
+        const metaData = await extractEpubMetadata(zip, opfPath);
         const imageMap = await extractImagesFromEpub(zip);
         const chapters = await extractChapterContent(zip, tocItems, contentPath, imageMap);
 
@@ -70,9 +72,9 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             }
         }
 
-        return { toc: tocItems, chapters, css: combinedCSS };
+        return { toc: tocItems, chapters, css: combinedCSS, metaData: metaData };
     } catch (e: any) {
         console.error(e.message);
-        return { toc: [], chapters: [], css: "" };
+        return { toc: [], chapters: [], css: "", metaData: { title: "", author: "", publisher: "", language: "" } };
     }
 };
