@@ -9,7 +9,8 @@ export interface MetaData {
     title: string;
     author: string;
     language: string;
-    publisher?: string
+    publisher?: string;
+    isbn: string;
 }
 
 export interface TOC {
