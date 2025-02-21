@@ -17,7 +17,6 @@ export const updateImageSources = (htmlString: string, imageMap: Record<string, 
 
             if (matchedKey) {
                 img.setAttribute("src", imageMap[matchedKey]); // Set Blob URL
-                console.log(`Updated image src: ${originalSrc} → ${imageMap[matchedKey]}`);
             } else {
                 console.warn(`Image not found in map: ${normalizedSrc}`);
             }

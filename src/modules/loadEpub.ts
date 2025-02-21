@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { fetchAndConvertToArrayBuffer } from "./fetchAndConvertToArrayBuffer";
 
 //Types
-import { EpubData, TOC, Chapter } from "../Types/EpubDataTypes";
+import { EpubData } from "../Types/EpubDataTypes";
 
 //Modules
 import { verifyEpubGetOpfPath } from "./verifyEpubGetOpfPath";
@@ -69,7 +69,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
                 combinedCSS += cleanedCss + "\n";
             }
         }
-
 
         return { toc: tocItems, chapters, css: combinedCSS };
     } catch (e: any) {
