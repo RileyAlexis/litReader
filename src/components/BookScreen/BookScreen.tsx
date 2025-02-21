@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react';
 
+//Types
 import { EpubData } from '../../Types/EpubDataTypes';
 
 //Modules
 import { loadEpub } from '../../modules/loadEpub';
-import { fetchAndConvertToArrayBuffer } from '../../modules/fetchAndConvertToArrayBuffer';
 
 interface BookScreenProps {
     fileUrl: string; // File URL to the EPUB file
 }
 
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
-    const [htmlContent, setHtmlContent] = useState<string>('');
-    const [toc, setToc] = useState<any>();
     const [bookData, setBookData] = useState<EpubData>();
     const [fontSize, setFontSize] = useState<number>(19);
-
-    const [error, setError] = useState<string>('');
 
     useEffect(() => {
         const loadBook = async () => {
@@ -27,7 +23,6 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         loadBook();
 
     }, [fileUrl]);
-
 
     //Allows a user selected font size to override the epub CSS
     useEffect(() => {
