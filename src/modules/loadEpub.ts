@@ -316,7 +316,7 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
         lastFileHref = fileHref;
 
         // Replace image URLs before storing the content
-        chapterContent = updateImageSources(chapterContent, imageMap, opfPath);
+        chapterContent = updateImageSources(chapterContent, imageMap);
 
         chapters.push({
             title: title,
@@ -352,26 +352,26 @@ const extractImagesFromEpub = async (zip: JSZip): Promise<Record<string, string>
     return imageMap;
 };
 
-const updateImageSources = (htmlString: string, imageMap: Record<string, string>, basePath: string): string => {
+const updateImageSources = (htmlString: string, imageMap: Record<string, string>): string => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, "text/html");
 
     const images = doc.querySelectorAll("img");
+
     images.forEach((img) => {
         const originalSrc = img.getAttribute("src");
         if (originalSrc) {
-            // Normalize the path (removes leading ./, ../, etc.)
-            let normalizedSrc = decodeURIComponent(originalSrc).replace(/^\.\//, "").replace(/^\.{2}\//, "");
+            // Normalize the path (remove leading ./, ../, etc.)
+            let normalizedSrc = decodeURIComponent(originalSrc)
+                .replace(/^(\.\/|\.\.\/)*/, "") // Remove leading ./ or ../
+                .replace(/\\/g, "/"); // Normalize slashes
 
-            // If the basePath is empty, don't prepend anything
-            if (basePath && !normalizedSrc.startsWith("http") && !normalizedSrc.startsWith("data:")) {
-                normalizedSrc = basePath + normalizedSrc;
-            }
+            // Find the correct key in the imageMap
+            const matchedKey = Object.keys(imageMap).find(key => key.endsWith(normalizedSrc));
 
-            // Check if the image exists in the map using the full resolved path
-            if (imageMap[normalizedSrc]) {
-                // Set the Blob URL from the image map if it exists
-                img.setAttribute("src", imageMap[normalizedSrc]);
+            if (matchedKey) {
+                img.setAttribute("src", imageMap[matchedKey]); // Set Blob URL
+                console.log(`Updated image src: ${originalSrc} → ${imageMap[matchedKey]}`);
             } else {
                 console.warn(`Image not found in map: ${normalizedSrc}`);
             }
@@ -390,6 +390,10 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         const opfFile = await getOpfFile(zip, opfPath);
         const opfXml = await parseOpfXml(zip, opfFile);
         // const version = await getEpubVersion(zip, opfXml);
+
+        console.log('opfPath', opfPath);
+        console.log('contentPath', contentPath);
+
 
         let tocItems;
 
