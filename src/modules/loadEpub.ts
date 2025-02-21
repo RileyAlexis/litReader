@@ -339,6 +339,13 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
     return chapters;
 };
 
+// Function to remove text colors and backgrounds from CSS
+const cleanEpubCss = (epubCss: string): string => {
+    return epubCss
+        .replace(/color\s*:\s*[^;]+;/gi, "") // Remove text colors
+        .replace(/background(-color)?\s*:\s*[^;]+;/gi, "") // Remove backgrounds
+        .replace(/background-image\s*:\s*[^;]+;/gi, ""); // Remove background images
+};
 
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
     try {
@@ -363,18 +370,17 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         }
 
         const chapters = await extractChapterContent(zip, tocItems, contentPath);
+
         let combinedCSS = "";
-
-
-        // // Extract CSS files
-        // const cssFiles = Object.keys(zip.files).filter(file => file.endsWith(".css"));
-        // for (const cssFile of cssFiles) {
-        //     const cssContent = await zip.file(cssFile)?.async("text");
-        //     if (cssContent) {
-        //         combinedCSS += cssContent + "\n";
-        //     }
-        // }
-
+        // Extract CSS and clean
+        const cssFiles = Object.keys(zip.files).filter(file => file.endsWith(".css"));
+        for (const cssFile of cssFiles) {
+            const cssContent = await zip.file(cssFile)?.async("text");
+            if (cssContent) {
+                const cleanedCss = cleanEpubCss(cssContent); // Clean before storing
+                combinedCSS += cleanedCss + "\n";
+            }
+        }
 
 
         return { toc: tocItems, chapters, css: combinedCSS };
