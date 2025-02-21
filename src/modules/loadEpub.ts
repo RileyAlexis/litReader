@@ -271,7 +271,7 @@ const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
 };
 
 // Extract chapter content
-const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: string): Promise<Chapter[]> => {
+const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: string, imageMap: Record<string, string>): Promise<Chapter[]> => {
     const chapters: Chapter[] = [];
     let lastFileHref: string | null = null;
 
@@ -329,6 +329,9 @@ const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: strin
 
         lastFileHref = fileHref;
 
+        // Replace image URLs before storing the content
+        chapterContent = updateImageSources(chapterContent, imageMap, opfPath);
+
         chapters.push({
             title: title,
             href,
@@ -345,6 +348,50 @@ const cleanEpubCss = (epubCss: string): string => {
         .replace(/color\s*:\s*[^;]+;/gi, "") // Remove text colors
         .replace(/background(-color)?\s*:\s*[^;]+;/gi, "") // Remove backgrounds
         .replace(/background-image\s*:\s*[^;]+;/gi, ""); // Remove background images
+};
+
+const extractImagesFromEpub = async (zip: JSZip): Promise<Record<string, string>> => {
+    const imageMap: Record<string, string> = {};
+
+    const imageFiles = Object.keys(zip.files).filter(file => file.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i));
+
+    for (const imageFile of imageFiles) {
+        const blob = await zip.file(imageFile)?.async("blob");
+        if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            imageMap[decodeURIComponent(imageFile)] = blobUrl; // Store in map
+        }
+    }
+
+    return imageMap;
+};
+
+const updateImageSources = (htmlString: string, imageMap: Record<string, string>, basePath: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, "text/html");
+
+    const images = doc.querySelectorAll("img");
+    images.forEach((img) => {
+        const originalSrc = img.getAttribute("src");
+        if (originalSrc) {
+            // Normalize the path (remove leading ./, ../, etc.)
+            let normalizedSrc = decodeURIComponent(originalSrc).replace(/^\.\//, "").replace(/^\.{2}\//, "");
+
+            // Ensure the image path is resolved correctly relative to the base path
+            if (!normalizedSrc.startsWith("http") && !normalizedSrc.startsWith("data:")) {
+                normalizedSrc = basePath + normalizedSrc;
+            }
+
+            // Check if the image exists in the map
+            if (imageMap[normalizedSrc]) {
+                img.setAttribute("src", imageMap[normalizedSrc]); // Set Blob URL
+            } else {
+                console.warn(`Image not found in map: ${normalizedSrc}`);
+            }
+        }
+    });
+
+    return doc.documentElement.outerHTML; // Return updated HTML
 };
 
 export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
@@ -369,7 +416,9 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
             tocItems = await getEpub2TableOfContents(ncxXml);
         }
 
-        const chapters = await extractChapterContent(zip, tocItems, contentPath);
+        const imageMap = await extractImagesFromEpub(zip);
+        console.log(imageMap);
+        const chapters = await extractChapterContent(zip, tocItems, contentPath, imageMap);
 
         let combinedCSS = "";
         // Extract CSS and clean
