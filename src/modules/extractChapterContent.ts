@@ -5,6 +5,10 @@ import { updateImageSources } from "./updateImageSources";
 //Types
 import { TOC, Chapter } from "../Types/EpubDataTypes";
 
+const cleanHtml = (html: string): string => {
+    return html.replace(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi, ""); // Remove link elements
+};
+
 // Extract chapter content
 export const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath: string, imageMap: Record<string, string>): Promise<Chapter[]> => {
     const chapters: Chapter[] = [];
@@ -60,6 +64,8 @@ export const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath
 
         // Replace image URLs before storing the content
         chapterContent = updateImageSources(chapterContent, imageMap);
+
+        chapterContent = cleanHtml(chapterContent);
 
         chapters.push({
             title: title,
