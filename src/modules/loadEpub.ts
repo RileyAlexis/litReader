@@ -27,6 +27,7 @@ const verifyEpubGetOpfPath = async (zip: JSZip): Promise<string> => {
     }
 }
 
+//Fetches the content.opf file and returns it
 const getOpfFile = async (zip: JSZip, opfPath: string): Promise<string> => {
     const opfFile = await zip.file(opfPath)?.async("text");
 
@@ -146,8 +147,6 @@ const getEpub2TableOfContents = async (ncxXml: Document): Promise<TOC[]> => {
 
 const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
     const tocItems: TOC[] = [];
-
-    // Step 1: Locate the <nav> element with epub:type="toc"
     const navElement = navXml.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"], nav');
 
     if (!navElement) {
@@ -160,11 +159,10 @@ const getEpub3TableOfContents = async (navXml: Document): Promise<TOC[]> => {
         const href = link.getAttribute("href");
         const title = link.textContent?.trim() || "Untitled";
 
-        // Ensure that href exists before pushing the item
         if (href) {
             tocItems.push({
                 title,
-                href: href.startsWith("#") ? href : `${href}`, // Handle relative URLs if needed
+                href: href.startsWith("#") ? href : `${href}`,
             });
         }
     }

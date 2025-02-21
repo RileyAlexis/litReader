@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { EpubData } from '../../modules/loadEpub';
+import { EpubData } from '../../Types/EpubDataTypes';
 
 //Modules
 import { loadEpub } from '../../modules/loadEpub';
