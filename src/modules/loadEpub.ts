@@ -1,22 +1,8 @@
 import JSZip from "jszip";
 import { fetchAndConvertToArrayBuffer } from "./fetchAndConvertToArrayBuffer";
 
-export interface EpubData {
-    toc: TOC[];
-    chapters: Chapter[];
-    css: string;
-}
-
-export interface TOC {
-    title: string;
-    href: string;
-}
-
-export interface Chapter {
-    title: string;
-    href: string;
-    content: string;
-}
+//Types
+import { EpubData, TOC, Chapter } from "../Types/EpubDataTypes";
 
 // Function to fix CSS links inside extracted HTML
 const fixCSSLinks = (html: string, chapterPath: string, zip: JSZip) => {
@@ -390,10 +376,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         const opfFile = await getOpfFile(zip, opfPath);
         const opfXml = await parseOpfXml(zip, opfFile);
         // const version = await getEpubVersion(zip, opfXml);
-
-        console.log('opfPath', opfPath);
-        console.log('contentPath', contentPath);
-
 
         let tocItems;
 
