@@ -25,11 +25,6 @@ function App() {
   return (
     <div className="appContainer">
       <LitHeader />
-      <h2>React on Safari 12</h2>
-      <button>Im a Button!</button>
-      <input type="text" placeholder="Text Input"></input>
-      <input type="range" step={10} max={200} min={0} value={rangeThing} onChange={(e) => handleRangeThing(e)}></input>
-      <span>{rangeThing}</span>
       <input type="file" accept=".epub" onChange={handleFileSelect}></input>
       <BookScreen fileUrl={fileUrl} />
 
