@@ -24,8 +24,12 @@ function App() {
 
   return (
     <div className="appContainer">
-      <LitHeader />
-      <input type="file" accept=".epub" onChange={handleFileSelect}></input>
+      {fileUrl === '' &&
+        <>
+          <LitHeader />
+          <input type="file" accept=".epub" onChange={handleFileSelect}></input>
+        </>
+      }
       <BookScreen fileUrl={fileUrl} />
 
     </div>
