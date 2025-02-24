@@ -2,7 +2,7 @@ import JSZip from "jszip";
 
 import { updateImageSources } from "./updateImageSources";
 
-//Types
+// Types
 import { TOC, Chapter } from "../Types/EpubDataTypes";
 
 const cleanHtml = (html: string): string => {
@@ -26,16 +26,32 @@ export const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath
 
         let chapterContent = "";
 
-        //Looks for an anchor index in the href and separates it from the file path
+        // Looks for an anchor index in the href and separates it from the file path
         const anchorIndex = href.indexOf('#');
         if (anchorIndex !== -1) {
             fileHref = fullHref.substring(0, anchorIndex);
             anchorId = fullHref.substring(anchorIndex + 1);
         }
 
-        const contentFile = await zip.file(fileHref)?.async("text");
+        let contentFile: string | undefined = await zip.file(fileHref)?.async("text");
+
         if (!contentFile) {
-            console.warn(`Unable to find content file at ${fileHref}`);
+            // If file can't be found, search the zip for a matching file
+            const zipFiles = Object.keys(zip.files);
+            const matchingFile = zipFiles.find((file) => file.includes(fileHref)); // Simple search for the file in the zip
+
+            if (matchingFile) {
+                console.warn(`File not found at ${fileHref}, using fallback: ${matchingFile}`);
+                contentFile = await zip.file(matchingFile)?.async("text");
+            } else {
+                console.warn(`Unable to find content file at ${fileHref} or in fallback search.`);
+                continue;
+            }
+        }
+
+        // Ensure contentFile is a valid string before proceeding
+        if (!contentFile) {
+            console.error(`Failed to load content for ${fileHref}`);
             continue;
         }
 
@@ -65,6 +81,7 @@ export const extractChapterContent = async (zip: JSZip, tocItems: TOC[], opfPath
         // Replace image URLs before storing the content
         chapterContent = updateImageSources(chapterContent, imageMap);
 
+        // Clean up HTML
         chapterContent = cleanHtml(chapterContent);
 
         chapters.push({
