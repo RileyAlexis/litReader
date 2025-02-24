@@ -46,8 +46,6 @@ export const loadEpub = async (fileUrl: string): Promise<EpubData> => {
         const opfXml = await parseOpfXml(zip, opfFile);
         // const version = await getEpubVersion(zip, opfXml);
 
-        console.debug(opfFile);
-
         let tocItems;
 
         try {
