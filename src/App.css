@@ -71,27 +71,16 @@
   }
 
   .bookContainer {
-    display: flex;
     height: 100vh;
     width: 100vw;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    scroll-snap-type: x mandatory;
   }
 
-  .bookContent {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
+  .bookChapter {
+    min-width: 100vw;
   }
 
-  .bookPage {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
-    overflow-y: auto;
+  .bookChapterContainer {
     scroll-snap-align: start;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
+    scroll-snap-type: x-mandatory;
+
   }

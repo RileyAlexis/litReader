@@ -5,6 +5,7 @@ import { EpubData } from '../../Types/EpubDataTypes';
 
 //Modules
 import { loadEpub } from '../../modules/loadEpub';
+import { Pagination } from './Pagination';
 
 interface BookScreenProps {
     fileUrl: string; // File URL to the EPUB file
@@ -13,14 +14,16 @@ interface BookScreenProps {
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [bookData, setBookData] = useState<EpubData>();
     const [fontSize, setFontSize] = useState<number>(19);
+    const [chapterIndex, setChapterIndex] = useState(18);
 
     useEffect(() => {
         const loadBook = async () => {
             const fetchedData = await loadEpub(fileUrl);
             setBookData(fetchedData);
         }
-
-        loadBook();
+        if (fileUrl !== '') {
+            loadBook();
+        }
 
     }, [fileUrl]);
 
@@ -54,17 +57,20 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
 
     return (
         <div className='bookContainer'>
-            <div
-                className='bookContent'>
 
-                {bookData?.chapters.map((chapter, index) => (
-                    <div
-                        className='bookPage'
-                        key={index}>
-                        <div dangerouslySetInnerHTML={{ __html: chapter.content }} />
-                    </div>
-                ))}
-            </div>
+            {bookData && bookData.chapters.length > chapterIndex &&
+
+                <Pagination content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
+
+            }
+            {/* <div className='bookChapter'>
+                {bookData?.chapters && bookData.chapters.length > chapterIndex &&
+                    <div className='bookChapterContainer'
+                        dangerouslySetInnerHTML={{ __html: bookData.chapters[chapterIndex].content }} />
+                }
+            </div> */}
+
+
         </div>
     );
 };
