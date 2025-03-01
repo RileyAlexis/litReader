@@ -6,6 +6,7 @@ import { EpubData } from '../../Types/EpubDataTypes';
 //Modules
 import { loadEpub } from '../../modules/loadEpub';
 import { Pagination } from './Pagination';
+import { SplitContent } from './SplitContent';
 
 interface BookScreenProps {
     fileUrl: string; // File URL to the EPUB file
@@ -60,7 +61,8 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
 
             {bookData && bookData.chapters.length > chapterIndex &&
 
-                <Pagination content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
+                // <Pagination content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
+                <SplitContent content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
 
             }
             {/* <div className='bookChapter'>
