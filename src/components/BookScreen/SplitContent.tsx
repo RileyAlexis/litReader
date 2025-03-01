@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, KeyboardEvent } from "react";
 
 interface SplitContentProps {
     content: string;
@@ -33,7 +33,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
 
             const tempContainer = document.createElement("div");
 
-            //Its repeating content because it's cloning on node at a time 
+            //Its repeating content because it's cloning one node at a time 
             //and then if it doesn't fit it repeats that same node
             //This needs to split content by word, passing over the HTML tags, 
             //and instert a new tag if it's on the previous page (usually a <p>)
@@ -53,6 +53,26 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         if (currentHTML) pagesArr.push(currentHTML);
         setPages(pagesArr);
     };
+
+    useEffect(() => {
+        const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'ArrowLeft') {
+                setCurrentPage((p) => Math.max(0, p - 1));
+                console.log(event.key);
+            } else if (event.key === "ArrowRight") {
+                setCurrentPage((p) => Math.min(pages.length - 1, p + 1));
+                console.log(event.key);
+
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown as EventListener);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown as EventListener);
+        }
+    }, []);
+
 
     useEffect(() => {
         paginateContent();
