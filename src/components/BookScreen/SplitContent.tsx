@@ -14,13 +14,14 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
     const paginateContent = () => {
         if (!hiddenRef.current || !containerRef.current) return;
 
-        const viewportHeight = containerRef.current.clientHeight;
+        const viewportHeight = containerRef.current.scrollHeight - (containerRef.current.scrollHeight * 0.1);
+        // const divHeight = containerRef.current.getBoundingClientRect().height;
+        const divHeight = parseFloat(window.getComputedStyle(containerRef.current).height);
         const parser = new DOMParser();
         const doc = parser.parseFromString(content, "text/html");
         const elements = Array.from(doc.body.querySelectorAll("*"));
 
-        console.log('element', elements);
-        console.log('Viewport height', viewportHeight);
+        console.log('Viewport height', viewportHeight, 'divheight:', divHeight);
 
         let currentHTML = "";
         let pagesArr: string[] = [];
@@ -31,7 +32,14 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
             if (!hiddenRef.current) return;
 
             const tempContainer = document.createElement("div");
+
+            //Its repeating content because it's cloning on node at a time 
+            //and then if it doesn't fit it repeats that same node
+            //This needs to split content by word, passing over the HTML tags, 
+            //and instert a new tag if it's on the previous page (usually a <p>)
             tempContainer.appendChild(element.cloneNode(true));
+
+            //This is inserting the blank page at the start
             hiddenRef.current.innerHTML = currentHTML + tempContainer.innerHTML;
 
             if (hiddenRef.current.clientHeight > viewportHeight) {
@@ -74,8 +82,8 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                 ref={hiddenRef} style={{
                     position: "absolute",
                     visibility: "hidden",
-                    width: "calc(100vw - 40px)", // Adjust for padding
-                    fontSize: "1em",
+                    width: "calc(100vw - 40px)",
+                    fontSize: fontSize,
                     lineHeight: "1.6",
                 }}>
             </div>
@@ -84,9 +92,8 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                 className="shownContainer"
                 style={{
                     width: "calc(100vw - 40px)",
-                    height: "100vh",
+                    fontSize: fontSize,
                     overflow: "hidden",
-                    fontSize: '1em',
                     lineHeight: "1.6"
                 }}
                 dangerouslySetInnerHTML={{ __html: pages[currentPage] }}
