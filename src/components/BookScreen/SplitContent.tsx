@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef, KeyboardEvent, useCallback } from "react";
 
+import { calculateNumberOfPages } from "../../modules/calculateNumberOfPages";
+import { paginateHtml } from "../../modules/paginateHtml";
+
 interface SplitContentProps {
     content: string;
     fontSize: number;
@@ -22,6 +25,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         let currentHTML = "";
         let pagesArr: string[] = [];
         let currentBlock: string = "";
+        let lastNode: string = "";
 
         // Ensure hiddenRef.current exists before modifying its innerHTML
         if (hiddenRef.current) {
@@ -73,7 +77,11 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
 
                 // Make sure we preserve the class and other attributes
                 clone.className = element.className; // Preserve class name
-                clone.id = element.id; // Preserve ID if available
+
+                // Prevent duplication of 'id' attribute, especially for page markers
+                if (element.tagName.toLowerCase() === "a" && element.id) {
+                    clone.removeAttribute("id"); // Remove the id if it's for page marker
+                }
 
                 // Recursively process child nodes
                 node.childNodes.forEach((child) => {
@@ -126,18 +134,20 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
     const prevPage = () => {
         setCurrentPage((p) => {
             const newNum = Math.max(0, p - 1)
-            console.log(newNum);
+            // console.log(newNum);
             return newNum;
-        })
+        });
+        console.log(pages[currentPage]);
     }
 
     const nextPage = () => {
         setCurrentPage((p) => {
             const newNum = Math.min(pages.length - 1, p + 1);
             if (pages.length === 0) return 0;
-            console.log(newNum);
+            // console.log(newNum);
             return newNum;
         });
+        console.log(pages[currentPage]);
     }
 
 
@@ -147,16 +157,30 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         return () => {
             window.removeEventListener("keydown", handleKeyDown as EventListener);
         }
-    }, [handleKeyDown])
+    }, [handleKeyDown]);
+
+
+    const callPaginate = () => {
+        const contentSplit = paginateHtml(content, fontSize, 1.6, 1, 0, 0, window.innerHeight * 0.9);
+        setPages(contentSplit);
+    }
 
     useEffect(() => {
-        paginateContent();
-        window.addEventListener("resize", paginateContent);
+        // paginateContent();
+
+        callPaginate();
+
+        window.addEventListener("resize", callPaginate);
 
         return () => {
-            window.removeEventListener("resize", paginateContent);
+            window.removeEventListener("resize", callPaginate);
         }
     }, [content]);
+
+    useEffect(() => {
+        console.log('Number of Calculated Pages:', calculateNumberOfPages(content, fontSize, 1.6, 1, 0, 0, window.innerHeight * 0.9));
+        console.log('Pages Array.length', pages.length);
+    })
 
     return (
         <div
