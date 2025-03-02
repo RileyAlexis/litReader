@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, KeyboardEvent } from "react";
+import { useEffect, useState, useRef, KeyboardEvent, useCallback } from "react";
 
 interface SplitContentProps {
     content: string;
@@ -54,31 +54,47 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         setPages(pagesArr);
     };
 
-    useEffect(() => {
-        const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-            if (event.key === 'ArrowLeft') {
-                setCurrentPage((p) => Math.max(0, p - 1));
-                console.log(event.key);
-            } else if (event.key === "ArrowRight") {
-                setCurrentPage((p) => Math.min(pages.length - 1, p + 1));
-                console.log(event.key);
+    const handleKeyDown = useCallback((event: globalThis.KeyboardEvent) => {
+        if (event.key === 'ArrowLeft') {
+            prevPage();
 
-            }
+        } else if (event.key === "ArrowRight") {
+            nextPage();
         }
+    }, []);
 
+    const prevPage = () => {
+        setCurrentPage((p) => {
+            const newNum = Math.max(0, p - 1)
+            console.log(newNum);
+            return newNum;
+        })
+    }
+
+    const nextPage = () => {
+        setCurrentPage((p) => {
+            const newNum = Math.min(pages.length - 1, p + 1);
+            console.log(newNum);
+            return newNum;
+        });
+    }
+
+
+    useEffect(() => {
         window.addEventListener("keydown", handleKeyDown as EventListener);
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown as EventListener);
         }
-    }, []);
-
+    }, [handleKeyDown])
 
     useEffect(() => {
         paginateContent();
         window.addEventListener("resize", paginateContent);
 
-        return () => window.removeEventListener("resize", paginateContent);
+        return () => {
+            window.removeEventListener("resize", paginateContent);
+        }
     }, [content]);
 
     return (
@@ -126,10 +142,10 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                     marginTop: '1rem',
                 }}
             >
-                <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}>
+                <button onClick={prevPage}>
                     Prev
                 </button>
-                <button onClick={() => setCurrentPage((p) => Math.min(pages.length - 1, p + 1))}>
+                <button onClick={nextPage}>
                     Next
                 </button>
             </div>
