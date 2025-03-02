@@ -15,74 +15,104 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         if (!hiddenRef.current || !containerRef.current) return;
 
         const viewportHeight = containerRef.current.scrollHeight - (containerRef.current.scrollHeight * 0.1);
-        // const divHeight = containerRef.current.getBoundingClientRect().height;
-        const divHeight = parseFloat(window.getComputedStyle(containerRef.current).height);
         const parser = new DOMParser();
         const doc = parser.parseFromString(content, "text/html");
-        const elements = Array.from(doc.body.querySelectorAll("*"));
-
-        console.log('Viewport height', viewportHeight, 'divheight:', divHeight);
+        const elements = Array.from(doc.body.childNodes); // Includes all nodes, not just <p>
 
         let currentHTML = "";
         let pagesArr: string[] = [];
+        let currentBlock: string = "";
 
+        // Ensure hiddenRef.current exists before modifying its innerHTML
         if (hiddenRef.current) {
-            hiddenRef.current.innerHTML = ""; // Clear previous content
+            hiddenRef.current.innerHTML = "";
         }
 
-        const processNode = (node: Node): string => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                let words = node.textContent?.split(" ") || [];
-                let tempContent = "";
-                let resultHTML = "";
+        // Utility function to split text by words while respecting the overflow
+        const handleTextSplit = (text: string): string => {
+            const words = text.split(" ");
+            let tempContent = "";
+            let resultHTML = "";
+            let lastValidContent = "";
 
-                words.forEach((word, index) => {
-                    const space = index > 0 ? " " : "";
-                    tempContent += space + word;
-                    hiddenRef.current!.innerHTML = currentHTML + resultHTML + tempContent;
+            words.forEach((word, index) => {
+                const space = index > 0 ? " " : "";
+                tempContent += space + word;
 
-                    if (hiddenRef.current) {
-                        if (hiddenRef.current?.clientHeight > viewportHeight) {
-                            pagesArr.push(currentHTML);
-                            currentHTML = resultHTML + word;
-                            tempContent = word;
-                        }
+                // Try to insert text and check for overflow
+                if (hiddenRef.current) {
+                    hiddenRef.current.innerHTML = currentHTML + currentBlock + tempContent;
+
+                    if (hiddenRef.current.clientHeight > viewportHeight) {
+                        // If overflow occurs, push content to the pages
+                        pagesArr.push(currentHTML + currentBlock);
+                        currentHTML = "";
+                        currentBlock = `<p>${lastValidContent.trim()}</p>`; // New page starts with a new <p> block
+                        tempContent = word; // Start the next block with the current word
                     }
-                    resultHTML = tempContent;
-                });
-                return resultHTML;
-            } else if (node.nodeType === node.ELEMENT_NODE) {
-                const element = node as HTMLElement;
-                let clone = element.cloneNode(false) as HTMLElement;
-                let innerHTML = "";
+                }
 
+                lastValidContent = tempContent;
+                resultHTML = tempContent;
+            });
+
+            return resultHTML;
+        };
+
+        // Recursively process nodes and split accordingly
+        const processNode = (node: Node): string => {
+            if (!hiddenRef.current) return "";
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                return handleTextSplit(node.textContent || "");
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node as HTMLElement;
+                let clone = element.cloneNode(false) as HTMLElement; // Clone without children first
+                let innerHTML = "";
+                let isBlockElement = ["P", "H1", "H2", "H3", "BLOCKQUOTE", "UL", "OL"].includes(element.tagName);
+
+                // Make sure we preserve the class and other attributes
+                clone.className = element.className; // Preserve class name
+                clone.id = element.id; // Preserve ID if available
+
+                // Recursively process child nodes
                 node.childNodes.forEach((child) => {
                     innerHTML += processNode(child);
                 });
 
                 clone.innerHTML = innerHTML;
-                hiddenRef.current!.innerHTML = currentHTML + clone.outerHTML;
 
+                // If the element is a block-level element and we exceed the viewport, push to the pages
                 if (hiddenRef.current) {
-                    if (hiddenRef.current?.clientHeight > viewportHeight) {
-                        pagesArr.push(currentHTML);
-                        currentHTML = clone.outerHTML;
+                    hiddenRef.current.innerHTML = currentHTML + currentBlock + clone.outerHTML;
+
+                    if (hiddenRef.current.clientHeight > viewportHeight) {
+                        // If we overflow, push content to pages and reset
+                        pagesArr.push(currentHTML + currentBlock);
+                        currentHTML = "";
+                        currentBlock = `<p>${innerHTML.trim()}</p>`; // Always wrap in <p> when continuing on a new page
                     } else {
-                        currentHTML += clone.outerHTML;
+                        currentBlock += clone.outerHTML;
                     }
                 }
+
                 return clone.outerHTML;
             }
+
             return "";
         };
 
         elements.forEach((node) => processNode(node));
 
-        if (currentHTML) {
-            pagesArr.push(currentHTML);
+        if (currentBlock) {
+            pagesArr.push(currentHTML + currentBlock);
         }
+
         setPages(pagesArr);
     };
+
+
+    //!End paginate function
 
     const handleKeyDown = useCallback((event: globalThis.KeyboardEvent) => {
         if (event.key === 'ArrowLeft') {
@@ -104,6 +134,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
     const nextPage = () => {
         setCurrentPage((p) => {
             const newNum = Math.min(pages.length - 1, p + 1);
+            if (pages.length === 0) return 0;
             console.log(newNum);
             return newNum;
         });

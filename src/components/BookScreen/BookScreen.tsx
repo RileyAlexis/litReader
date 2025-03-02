@@ -14,13 +14,14 @@ interface BookScreenProps {
 
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [bookData, setBookData] = useState<EpubData>();
-    const [fontSize, setFontSize] = useState<number>(19);
+    const [fontSize, setFontSize] = useState<number>(16);
     const [chapterIndex, setChapterIndex] = useState(18);
 
     useEffect(() => {
         const loadBook = async () => {
             const fetchedData = await loadEpub(fileUrl);
             setBookData(fetchedData);
+            console.log(fetchedData);
         }
         if (fileUrl !== '') {
             loadBook();
