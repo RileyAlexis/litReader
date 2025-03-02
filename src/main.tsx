@@ -1,5 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+
+//Redux
+import { Provider } from 'react-redux';
+import { storeInstance } from './store/store.ts';
+
+
+
 import App from './App.tsx'
 
 if ("serviceWorker" in navigator) {
@@ -15,6 +22,8 @@ if ("serviceWorker" in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Provider store={storeInstance}>
+      <App />
+    </Provider>
   </StrictMode>
 )
