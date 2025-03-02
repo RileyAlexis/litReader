@@ -194,7 +194,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                 alignItems: "center",
                 justifyContent: "center",
                 flexDirection: "column",
-                textAlign: "justify",
+                textAlign: "left",
                 padding: "20px",
             }} ref={containerRef}>
 
@@ -230,6 +230,9 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                 <button onClick={prevPage}>
                     Prev
                 </button>
+                <div>
+                    <span>{currentPage + 1} of {pages.length}</span>
+                </div>
                 <button onClick={nextPage}>
                     Next
                 </button>
