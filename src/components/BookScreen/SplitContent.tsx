@@ -26,31 +26,61 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
         let currentHTML = "";
         let pagesArr: string[] = [];
 
-        hiddenRef.current.innerHTML = ""; // Clear previous content
+        if (hiddenRef.current) {
+            hiddenRef.current.innerHTML = ""; // Clear previous content
+        }
 
-        elements.forEach((element) => {
-            if (!hiddenRef.current) return;
+        const processNode = (node: Node): string => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                let words = node.textContent?.split(" ") || [];
+                let tempContent = "";
+                let resultHTML = "";
 
-            const tempContainer = document.createElement("div");
+                words.forEach((word, index) => {
+                    const space = index > 0 ? " " : "";
+                    tempContent += space + word;
+                    hiddenRef.current!.innerHTML = currentHTML + resultHTML + tempContent;
 
-            //Its repeating content because it's cloning one node at a time 
-            //and then if it doesn't fit it repeats that same node
-            //This needs to split content by word, passing over the HTML tags, 
-            //and instert a new tag if it's on the previous page (usually a <p>)
-            tempContainer.appendChild(element.cloneNode(true));
+                    if (hiddenRef.current) {
+                        if (hiddenRef.current?.clientHeight > viewportHeight) {
+                            pagesArr.push(currentHTML);
+                            currentHTML = resultHTML + word;
+                            tempContent = word;
+                        }
+                    }
+                    resultHTML = tempContent;
+                });
+                return resultHTML;
+            } else if (node.nodeType === node.ELEMENT_NODE) {
+                const element = node as HTMLElement;
+                let clone = element.cloneNode(false) as HTMLElement;
+                let innerHTML = "";
 
-            //This is inserting the blank page at the start
-            hiddenRef.current.innerHTML = currentHTML + tempContainer.innerHTML;
+                node.childNodes.forEach((child) => {
+                    innerHTML += processNode(child);
+                });
 
-            if (hiddenRef.current.clientHeight > viewportHeight) {
-                pagesArr.push(currentHTML);
-                currentHTML = tempContainer.innerHTML;
-            } else {
-                currentHTML += tempContainer.innerHTML;
+                clone.innerHTML = innerHTML;
+                hiddenRef.current!.innerHTML = currentHTML + clone.outerHTML;
+
+                if (hiddenRef.current) {
+                    if (hiddenRef.current?.clientHeight > viewportHeight) {
+                        pagesArr.push(currentHTML);
+                        currentHTML = clone.outerHTML;
+                    } else {
+                        currentHTML += clone.outerHTML;
+                    }
+                }
+                return clone.outerHTML;
             }
-        });
+            return "";
+        };
 
-        if (currentHTML) pagesArr.push(currentHTML);
+        elements.forEach((node) => processNode(node));
+
+        if (currentHTML) {
+            pagesArr.push(currentHTML);
+        }
         setPages(pagesArr);
     };
 
