@@ -5,7 +5,6 @@ import { EpubData } from '../../Types/EpubDataTypes';
 
 //Modules
 import { loadEpub } from '../../modules/loadEpub';
-import { Pagination } from './Pagination';
 import { SplitContent } from './SplitContent';
 
 interface BookScreenProps {
@@ -14,8 +13,8 @@ interface BookScreenProps {
 
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [bookData, setBookData] = useState<EpubData>();
-    const [fontSize, setFontSize] = useState<number>(14);
-    const [lineHeight, setLineHeight] = useState<number>(1);
+    const [fontSize, setFontSize] = useState<number>(16);
+    const [lineHeight, setLineHeight] = useState<number>(1.4);
     const [chapterIndex, setChapterIndex] = useState(18);
     const [fontFamily, setFontFamily] = useState<string>('Arial');
 
@@ -30,6 +29,17 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         }
 
     }, [fileUrl]);
+
+    //Keeps screen awake on Safari 12
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            console.log('Keep Screen Awake');
+        }, 60000);
+
+        return () => {
+            clearInterval(intervalId);
+        }
+    }, []);
 
     //Allows a user selected font size to override the epub CSS
     useEffect(() => {
@@ -56,8 +66,6 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
                 console.log('lineHeightMatch', lineHeightMatch);
             }
 
-
-
             // Create a new style tag
             const styleTag = document.createElement("style");
             styleTag.id = styleId; // Assign ID for future reference
@@ -76,7 +84,7 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         <div className='bookContainer'>
 
             {bookData && bookData.chapters.length > chapterIndex &&
-                <SplitContent content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} fontFamily={fontFamily} />
+                <SplitContent content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} fontFamily={fontFamily} lineHeight={lineHeight} />
             }
         </div>
     );
