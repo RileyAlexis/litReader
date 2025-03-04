@@ -159,7 +159,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
 
 
     const callPaginate = () => {
-        const contentSplit = paginateHtml(content, fontSize, 1.6, 1, 0, 0, window.innerHeight * 0.9);
+        const contentSplit = paginateHtml(content, fontSize, 1.6, 1, 0, 0, window.innerHeight * 0.9, window.innerWidth);
         setPages(contentSplit);
     }
 

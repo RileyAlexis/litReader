@@ -1,3 +1,5 @@
+import { estimateCharacters } from "./esimateCharsPerLine";
+
 export function paginateHtml(
     htmlContent: string,
     fontSize: number,
@@ -5,7 +7,8 @@ export function paginateHtml(
     scaleFactor: number = 1,
     paddingTop: number = 0,
     paddingBottom: number = 0,
-    containerHeight: number
+    containerHeight: number,
+    containerWidth: number,
 ): string[] {
 
     function getLineHeight(): number {
@@ -23,7 +26,7 @@ export function paginateHtml(
 
     const lineHeightPerLine = getLineHeight();
     const linesPerPage = Math.floor(containerHeight / lineHeightPerLine);
-    const estimatedCharactersPerLine = 80;
+    const estimatedCharactersPerLine = estimateCharacters(containerWidth, fontSize,);
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -53,7 +56,8 @@ export function paginateHtml(
                     currentPageContent = reopenOpenTags();
                     currentLineCount = 0;
                 }
-                currentPageContent += line.trim() + '<br />';
+                currentPageContent += line.trim() + ' ';
+                // + '<br />';
                 line = word;
                 currentLineCount++;
             } else {
@@ -74,11 +78,17 @@ export function paginateHtml(
 
     function processElement(element: Node): void {
         if (element.nodeType === Node.TEXT_NODE) {
-            addTextToPage(element.textContent || '');
+            addTextToPage(element.textContent || ' ');
         } else if (element.nodeType === Node.ELEMENT_NODE) {
             const el = element as HTMLElement;
             const tag = el.tagName.toLowerCase();
             const attributes = Array.from(el.attributes).map(attr => `${attr.name}="${attr.value}"`).join(' ');
+
+            // Add a space before opening a new tag if the previous character is not a space
+            if (currentPageContent && !currentPageContent.endsWith(' ')) {
+                currentPageContent += ' ';
+            }
+
             openTags.push({ tag, attributes });
             currentPageContent += `<${tag} ${attributes}>`;
 
@@ -86,6 +96,11 @@ export function paginateHtml(
 
             openTags.pop();
             currentPageContent += `</${tag}>`;
+
+            // Add a space after closing a tag if the next character is not a space
+            if (currentPageContent && !currentPageContent.endsWith(' ')) {
+                currentPageContent += ' ';
+            }
         }
     }
 
