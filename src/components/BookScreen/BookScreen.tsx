@@ -17,6 +17,43 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [lineHeight, setLineHeight] = useState<number>(1.4);
     const [chapterIndex, setChapterIndex] = useState(18);
     const [fontFamily, setFontFamily] = useState<string>('Arial');
+    const [awakeTime, setAwakeTime] = useState<number>(120000);
+    const [intervalId, setIntervalId] = useState<number | null>(null);
+
+    const keepScreenAwake = (time: number) => {
+        // Clear any existing intervals first
+        if (intervalId !== null) {
+            clearInterval(intervalId);
+        }
+
+        // Start a new interval to keep the screen awake
+        const newIntervalId = setInterval(() => {
+            console.log('Keeping the screen awake...');
+        }, 1000); // Keep screen awake every second
+
+        setIntervalId(newIntervalId);
+
+        // Stop the interval after the user-set time
+        setTimeout(() => {
+            clearInterval(newIntervalId);
+            console.log('Stopped keeping the screen awake.');
+        }, time);
+    };
+
+    useEffect(() => {
+        // When the component mounts, set the screen to stay awake for the user-defined time
+        if (awakeTime > 0) {
+            keepScreenAwake(awakeTime);
+        }
+
+        // Cleanup interval when the component unmounts
+        return () => {
+            if (intervalId !== null) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [awakeTime]);
+
 
     useEffect(() => {
         const loadBook = async () => {
@@ -29,17 +66,6 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         }
 
     }, [fileUrl]);
-
-    //Keeps screen awake on Safari 12
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            console.log('Keep Screen Awake');
-        }, 60000);
-
-        return () => {
-            clearInterval(intervalId);
-        }
-    }, []);
 
     //Allows a user selected font size to override the epub CSS
     useEffect(() => {
