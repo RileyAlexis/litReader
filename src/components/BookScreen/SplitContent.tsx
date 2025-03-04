@@ -137,7 +137,6 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
             // console.log(newNum);
             return newNum;
         });
-        console.log(pages[currentPage]);
     }
 
     const nextPage = () => {
@@ -147,7 +146,6 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
             // console.log(newNum);
             return newNum;
         });
-        console.log(pages[currentPage]);
     }
 
 
@@ -180,6 +178,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
     useEffect(() => {
         console.log('Number of Calculated Pages:', calculateNumberOfPages(content, fontSize, 1.6, 1, 0, 0, window.innerHeight * 0.9));
         console.log('Pages Array.length', pages.length);
+        console.log(pages[currentPage]);
     })
 
     return (
@@ -191,7 +190,7 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                 overflow: "hidden",
                 position: "relative",
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-start",
                 justifyContent: "center",
                 flexDirection: "column",
                 textAlign: "left",
@@ -215,7 +214,8 @@ export const SplitContent: React.FC<SplitContentProps> = ({ content, fontSize })
                     width: "calc(100vw - 40px)",
                     fontSize: fontSize,
                     overflow: "hidden",
-                    lineHeight: "1.6"
+                    lineHeight: "1.6",
+                    alignItems: "flex-start"
                 }}
                 dangerouslySetInnerHTML={{ __html: pages[currentPage] }}
             />
