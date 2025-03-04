@@ -26,7 +26,10 @@ export function paginateHtml(
 
     const lineHeightPerLine = getLineHeight();
     const linesPerPage = Math.floor(containerHeight / lineHeightPerLine);
-    const estimatedCharactersPerLine = estimateCharacters(containerWidth, fontSize,);
+    const estimatedCharactersPerLine = estimateCharacters(containerWidth, fontSize);
+
+    console.log('estimatedCharactersPerLine', estimatedCharactersPerLine);
+    console.log('lineHeightPerLine', lineHeightPerLine, 'linesPerPage', linesPerPage);
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -57,7 +60,6 @@ export function paginateHtml(
                     currentLineCount = 0;
                 }
                 currentPageContent += line.trim() + ' ';
-                // + '<br />';
                 line = word;
                 currentLineCount++;
             } else {

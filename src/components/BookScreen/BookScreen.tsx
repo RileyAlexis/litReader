@@ -14,8 +14,10 @@ interface BookScreenProps {
 
 export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
     const [bookData, setBookData] = useState<EpubData>();
-    const [fontSize, setFontSize] = useState<number>(16);
+    const [fontSize, setFontSize] = useState<number>(14);
+    const [lineHeight, setLineHeight] = useState<number>(1);
     const [chapterIndex, setChapterIndex] = useState(18);
+    const [fontFamily, setFontFamily] = useState<string>('Arial');
 
     useEffect(() => {
         const loadBook = async () => {
@@ -43,6 +45,19 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
             // Ensure CSS is clean (remove any unexpected <link> tags)
             const cleanedCss = bookData.css.replace(/<link[^>]+>/g, "");
 
+            // Extract font family from CSS
+            const fontFamilyMatch = cleanedCss.match(/font-family:\s*([^;]+);/);
+            const extractedFontFamily = fontFamilyMatch ? fontFamilyMatch[1].trim() : 'Arial';
+            setFontFamily(extractedFontFamily);
+
+            const lineHeightMatch = cleanedCss.match(/line-height:\s * ([^;]+); /);
+            if (lineHeightMatch) {
+                setLineHeight(Number(lineHeightMatch));
+                console.log('lineHeightMatch', lineHeightMatch);
+            }
+
+
+
             // Create a new style tag
             const styleTag = document.createElement("style");
             styleTag.id = styleId; // Assign ID for future reference
@@ -61,19 +76,8 @@ export const BookScreen: React.FC<BookScreenProps> = ({ fileUrl }) => {
         <div className='bookContainer'>
 
             {bookData && bookData.chapters.length > chapterIndex &&
-
-                // <Pagination content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
-                <SplitContent content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} />
-
+                <SplitContent content={bookData?.chapters[chapterIndex].content} fontSize={fontSize} fontFamily={fontFamily} />
             }
-            {/* <div className='bookChapter'>
-                {bookData?.chapters && bookData.chapters.length > chapterIndex &&
-                    <div className='bookChapterContainer'
-                        dangerouslySetInnerHTML={{ __html: bookData.chapters[chapterIndex].content }} />
-                }
-            </div> */}
-
-
         </div>
     );
 };
